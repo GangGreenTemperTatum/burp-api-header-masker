@@ -4,11 +4,11 @@ import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.handler.*;
 import burp.api.montoya.http.message.HttpHeader;
-import burp.api.montoya.http.message.HttpRequestResponse;
-import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
-import burp.api.montoya.ui.editor.HttpRequestEditor;
-import burp.api.montoya.ui.editor.HttpResponseEditor;
+import burp.api.montoya.proxy.http.InterceptedResponse;
+import burp.api.montoya.proxy.http.ProxyResponseHandler;
+import burp.api.montoya.proxy.http.ProxyResponseReceivedAction;
+import burp.api.montoya.proxy.http.ProxyResponseToBeSentAction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,24 +20,20 @@ public class APIHeaderMasker implements BurpExtension {
     public void initialize(MontoyaApi api) {
         api.extension().setName("API Header Masker");
 
-        // Register HTTP handler
+        // Register HTTP handler for Proxy History
         api.http().registerHttpHandler(new HttpHandler() {
             @Override
             public RequestToBeSentAction handleHttpRequestToBeSent(HttpRequestToBeSent requestToBeSent) {
-                // Let the original request go through unmodified
                 return RequestToBeSentAction.continueWith(requestToBeSent);
             }
 
             @Override
             public ResponseReceivedAction handleHttpResponseReceived(HttpResponseReceived responseReceived) {
-                HttpResponse response = responseReceived.response();
-                List<HttpHeader> headers = response.headers();
+                HttpResponse originalResponse = responseReceived.responseResponse();
+                List<HttpHeader> headers = originalResponse.headers();
                 boolean needsModification = false;
-
-                // Create new list for modified headers
                 List<HttpHeader> maskedHeaders = new ArrayList<>();
 
-                // Check each header
                 for (HttpHeader header : headers) {
                     if (header.name().toLowerCase().contains("api")) {
                         maskedHeaders.add(HttpHeader.httpHeader(header.name(), MASKED_VALUE));
@@ -47,66 +43,52 @@ public class APIHeaderMasker implements BurpExtension {
                     }
                 }
 
-                // If we found headers to mask, create new response with masked headers
                 if (needsModification) {
-                    HttpResponse maskedResponse = response.withHeaders(maskedHeaders);
+                    HttpResponse maskedResponse = HttpResponse.httpResponse()
+                        .withBody(originalResponse.body())
+                        .withHeaders(maskedHeaders)
+                        .withStatusCode(originalResponse.statusCode())
+                        .build();
                     return ResponseReceivedAction.continueWith(maskedResponse);
                 }
 
-                return ResponseReceivedAction.continueWith(response);
+                return ResponseReceivedAction.continueWith(originalResponse);
             }
         });
 
-        // Register HTTP response editor
-        api.userInterface().registerHttpResponseEditor(new HttpResponseEditor() {
+        // Register HTTP response handler for Proxy
+        api.proxy().registerResponseHandler(new ProxyResponseHandler() {
             @Override
-            public HttpResponse getResponse() {
-                return null;
-            }
+            public ProxyResponseReceivedAction handleResponseReceived(InterceptedResponse interceptedResponse) {
+                HttpResponse originalResponse = interceptedResponse.responseResponse();
+                List<HttpHeader> headers = originalResponse.headers();
+                boolean needsModification = false;
+                List<HttpHeader> maskedHeaders = new ArrayList<>();
 
-            @Override
-            public boolean isEnabledFor(HttpRequestResponse requestResponse) {
-                // Enable for all responses
-                return true;
-            }
-
-            @Override
-            public void setRequestResponse(HttpRequestResponse requestResponse) {
-                if (requestResponse != null && requestResponse.response() != null) {
-                    HttpResponse response = requestResponse.response();
-                    List<HttpHeader> headers = response.headers();
-                    boolean needsModification = false;
-
-                    // Create new list for modified headers
-                    List<HttpHeader> maskedHeaders = new ArrayList<>();
-
-                    // Check each header
-                    for (HttpHeader header : headers) {
-                        if (header.name().toLowerCase().contains("api")) {
-                            maskedHeaders.add(HttpHeader.httpHeader(header.name(), MASKED_VALUE));
-                            needsModification = true;
-                        } else {
-                            maskedHeaders.add(header);
-                        }
-                    }
-
-                    // If we found headers to mask, create new response with masked headers
-                    if (needsModification) {
-                        requestResponse = requestResponse.withResponse(
-                            response.withHeaders(maskedHeaders)
-                        );
+                for (HttpHeader header : headers) {
+                    if (header.name().toLowerCase().contains("api")) {
+                        maskedHeaders.add(HttpHeader.httpHeader(header.name(), MASKED_VALUE));
+                        needsModification = true;
+                    } else {
+                        maskedHeaders.add(header);
                     }
                 }
+
+                if (needsModification) {
+                    HttpResponse maskedResponse = HttpResponse.httpResponse()
+                        .withBody(originalResponse.body())
+                        .withHeaders(maskedHeaders)
+                        .withStatusCode(originalResponse.statusCode())
+                        .build();
+                    return ProxyResponseReceivedAction.continueWith(maskedResponse);
+                }
+
+                return ProxyResponseReceivedAction.continueWith(originalResponse);
             }
 
             @Override
-            public boolean isModified() {
-                return false;
-            }
-
-            @Override
-            public byte[] getResponseBytes() {
-                return new byte[0];
+            public ProxyResponseToBeSentAction handleResponseToBeSent(InterceptedResponse interceptedResponse) {
+                return ProxyResponseToBeSentAction.continueWith(interceptedResponse);
             }
         });
     }
