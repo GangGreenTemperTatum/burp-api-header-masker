@@ -1,107 +1,119 @@
 # Burp API Header Masker
 
-A Burp Suite extension that automatically masks the values of headers containing "API" (case-insensitive) in both the Proxy history and Repeater tabs. This is useful when creating documentation, PoC's etc, and prevents having to redact screenshots etc.
+A Burp Suite extension that automatically masks sensitive values in both the Proxy history and message viewer. This is useful when creating documentation, PoC's etc, and prevents having to redact screenshots etc.
 
 - [Burp API Header Masker](#burp-api-header-masker)
   - [Features](#features)
-  - [Prerequisites](#prerequisites)
-  - [Building from Source](#building-from-source)
-  - [Installation in Burp Suite](#installation-in-burp-suite)
-  - [Development Environment Setup](#development-environment-setup)
-  - [Building with Different Java Versions](#building-with-different-java-versions)
-  - [Troubleshooting](#troubleshooting)
+  - [Python Version](#python-version)
+    - [Features](#features-1)
+    - [Installation](#installation)
+    - [Usage](#usage)
+  - [Java Version (Under Development)](#java-version-under-development)
+    - [Prerequisites](#prerequisites)
+    - [Building from Source](#building-from-source)
+    - [Installation](#installation-1)
+  - [Development](#development)
+    - [Python Extension Structure](#python-extension-structure)
+    - [Key Components](#key-components)
+  - [Author](#author)
 
 ## Features
 
-- Detects headers containing "API" (case-insensitive)
-- Masks header values with asterisks (`********`)
-- Works in both Proxy history and Repeater tabs
-- Preserves original header names
-- Processes both requests and responses
+- Detects and masks sensitive values in headers and body content
+- Preserves original data while masking display values
+- Works in both Proxy history and message viewer
+- Useful for documentation and screenshots without manual redaction
 
-## Prerequisites
+## Python Version
 
+### Features
+- Automatically masks sensitive values containing:
+  - 'token'
+  - 'secret'
+  - 'api'
+  - JWT tokens (starting with 'ey')
+- Provides an "Original Message" tab in the message viewer to see unmasked values
+- Masks values only in the display, preserving original request/response data
+- Works with both requests and responses
+- No impact on actual intercepted traffic
+
+### Installation
+1. Install Jython standalone JAR (if not already installed):
+   - Download from: https://www.jython.org/download
+   - In Burp Suite: Extender > Options > Python Environment
+   - Select the Jython standalone JAR
+
+2. Load the extension:
+   - Extender > Add
+   - Set Extension Type to Python
+   - Select `apiheadermasker.py`
+   - Click Next
+
+### Usage
+1. Proxy History:
+   - Sensitive values are automatically masked in the display
+   - Original traffic is not modified
+
+2. Message Viewer:
+   - Double-click any request/response in Proxy history
+   - Look for the "Original Message" tab
+   - This tab shows the unmasked, original content
+   - Switch between masked (in main tabs) and unmasked (in Original Message tab) views
+
+## Java Version (Under Development)
+
+### Prerequisites
 - Java Development Kit (JDK) 17 or later
 - Gradle (included via wrapper)
 - Burp Suite Professional
 
-## Building from Source
-
+### Building from Source
 1. Clone the repository:
 ```bash
 git clone https://github.com/GangGreenTemperTatum/burp-api-header-masker.git
 cd burp-api-header-masker
 ```
 
-2. Initialize the Gradle wrapper:
+2. Initialize Gradle wrapper:
 ```bash
 gradle wrapper
 ```
 
-3. Build the extension using Gradle:
+3. Build the extension:
 ```bash
-# On Unix-like systems:
+# Unix-like systems:
 ./gradlew build
 
-# On Windows:
+# Windows:
 .\gradlew.bat build
 ```
 
-The compiled JAR file will be created in `build/libs/burp-api-header-masker-1.0-SNAPSHOT.jar`
-
-## Installation in Burp Suite
-
+### Installation
 1. Open Burp Suite Professional
-2. Go to the "Extensions" tab
-3. Click the "Add" button
-4. Set "Extension type" to "Java"
-5. Click "Select file" and choose the compiled JAR file from `build/libs/burp-api-header-masker-1.0-SNAPSHOT.jar`
-6. Click "Next" to load the extension
+2. Go to Extensions tab
+3. Click Add
+4. Set Extension Type to Java
+5. Select the compiled JAR
+6. Click Next
 
-## Development Environment Setup
+## Development
 
-1. Create the project structure:
-```bash
-mkdir -p src/main/java/burp
-mkdir -p gradle/wrapper
+### Python Extension Structure
+```
+burp-api-header-masker/
+├── apiheadermasker.py    # Main extension code
+└── README.md
 ```
 
-2. Copy the source files into the appropriate directories:
-   - `APIHeaderMasker.java` → `src/main/java/burp/`
-   - `build.gradle` → project root
-   - `settings.gradle` → project root
+### Key Components
+- `BurpExtender`: Main extension class
+- `processProxyMessage`: Handles masking of values
+- `OriginalMessageTab`: Provides access to unmasked values
+- Masking patterns:
+  ```python
+  sensitive_words = ['token', 'secret', 'api', 'ey']
+  jwt_pattern = r'(eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*)'
+  ```
 
-3. Initialize the Gradle wrapper:
-```bash
-gradle wrapper
-```
-
-## Building with Different Java Versions
-
-If you need to use a different Java version, modify the following lines in `build.gradle`:
-
-```gradle
-sourceCompatibility = '17'
-targetCompatibility = '17'
-```
-
-Replace `'17'` with your desired Java version.
-
-## Troubleshooting
-
-If you encounter build errors:
-
-1. Verify Java version:
-```bash
-java -version
-```
-
-2. Ensure Gradle is using the correct Java version:
-```bash
-./gradlew --version
-```
-
-3. Clean and rebuild:
-```bash
-./gradlew clean build
-```
+## Author
+@GangGreenTemperTatum
