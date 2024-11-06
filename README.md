@@ -16,6 +16,7 @@ A Burp Suite extension that automatically masks sensitive values in both the Pro
     - [Python Extension Structure](#python-extension-structure)
     - [Key Components](#key-components)
   - [Author](#author)
+  - [Star History](#star-history)
 
 ## Features
 
@@ -116,4 +117,8 @@ burp-api-header-masker/
   ```
 
 ## Author
-@GangGreenTemperTatum
+made with <3 by [@GangGreenTemperTatum](https://github.com/GangGreenTemperTatum)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=GangGreenTemperTatum/burp-api-header-masker&type=Date)](https://star-history.com/#GangGreenTemperTatum/burp-api-header-masker&Date)
