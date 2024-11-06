@@ -1,0 +1,82 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+
+# Java
+*.class
+*.log
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# Maven (in case it's used alongside Gradle)
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# OS specific
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Logs
+logs/
+*.log
+log/
+
+# Sensitive files
+*.key
+*.pem
+*.p12
+*.jks
+*.keystore
+*.properties
+!gradle.properties
+application-*.properties
+application-*.yml
+!application.properties
+!application.yml
+
+# Test coverage reports
+jacoco/
+coverage/
+
+# Debug files
+.attach_pid*
+
+# Temporary files
+tmp/
+temp/
+
+# Env
+
+.env
