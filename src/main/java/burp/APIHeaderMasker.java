@@ -29,8 +29,7 @@ public class APIHeaderMasker implements BurpExtension {
 
             @Override
             public ResponseReceivedAction handleHttpResponseReceived(HttpResponseReceived responseReceived) {
-                HttpResponse originalResponse = responseReceived.responseResponse();
-                List<HttpHeader> headers = originalResponse.headers();
+                List<HttpHeader> headers = responseReceived.headers();
                 boolean needsModification = false;
                 List<HttpHeader> maskedHeaders = new ArrayList<>();
 
@@ -44,15 +43,12 @@ public class APIHeaderMasker implements BurpExtension {
                 }
 
                 if (needsModification) {
-                    HttpResponse maskedResponse = HttpResponse.httpResponse()
-                        .withBody(originalResponse.body())
-                        .withHeaders(maskedHeaders)
-                        .withStatusCode(originalResponse.statusCode())
-                        .build();
-                    return ResponseReceivedAction.continueWith(maskedResponse);
+                    return ResponseReceivedAction.continueWith(
+                        HttpResponse.httpResponse().withHeaders(maskedHeaders).build()
+                    );
                 }
 
-                return ResponseReceivedAction.continueWith(originalResponse);
+                return ResponseReceivedAction.continueWith(responseReceived);
             }
         });
 
@@ -60,8 +56,7 @@ public class APIHeaderMasker implements BurpExtension {
         api.proxy().registerResponseHandler(new ProxyResponseHandler() {
             @Override
             public ProxyResponseReceivedAction handleResponseReceived(InterceptedResponse interceptedResponse) {
-                HttpResponse originalResponse = interceptedResponse.responseResponse();
-                List<HttpHeader> headers = originalResponse.headers();
+                List<HttpHeader> headers = interceptedResponse.headers();
                 boolean needsModification = false;
                 List<HttpHeader> maskedHeaders = new ArrayList<>();
 
@@ -75,15 +70,16 @@ public class APIHeaderMasker implements BurpExtension {
                 }
 
                 if (needsModification) {
-                    HttpResponse maskedResponse = HttpResponse.httpResponse()
-                        .withBody(originalResponse.body())
-                        .withHeaders(maskedHeaders)
-                        .withStatusCode(originalResponse.statusCode())
-                        .build();
-                    return ProxyResponseReceivedAction.continueWith(maskedResponse);
+                    return ProxyResponseReceivedAction.continueWith(
+                        HttpResponse.httpResponse()
+                            .withBody(interceptedResponse.body())
+                            .withHeaders(maskedHeaders)
+                            .withStatusCode(interceptedResponse.statusCode())
+                            .build()
+                    );
                 }
 
-                return ProxyResponseReceivedAction.continueWith(originalResponse);
+                return ProxyResponseReceivedAction.continueWith(interceptedResponse);
             }
 
             @Override
