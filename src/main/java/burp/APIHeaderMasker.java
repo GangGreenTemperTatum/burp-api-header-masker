@@ -2,7 +2,11 @@ package burp;
 
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
-import burp.api.montoya.http.handler.*;
+import burp.api.montoya.http.handler.HttpHandler;
+import burp.api.montoya.http.handler.HttpRequestToBeSent;
+import burp.api.montoya.http.handler.HttpResponseReceived;
+import burp.api.montoya.http.handler.RequestToBeSentAction;
+import burp.api.montoya.http.handler.ResponseReceivedAction;
 import burp.api.montoya.http.message.HttpHeader;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.proxy.http.InterceptedResponse;
@@ -15,6 +19,42 @@ import java.util.List;
 
 public class APIHeaderMasker implements BurpExtension {
     private static final String MASKED_VALUE = "**burp-api-header-masker**";
+    private static final String[] SENSITIVE_KEYWORDS = {"api", "token", "secret"};
+
+    private boolean isHeaderSensitive(String headerName) {
+        headerName = headerName.toLowerCase();
+        for (String keyword : SENSITIVE_KEYWORDS) {
+            if (headerName.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private HttpResponse maskSensitiveHeaders(HttpResponse originalResponse) {
+        List<HttpHeader> headers = originalResponse.headers();
+        boolean needsModification = false;
+        List<HttpHeader> maskedHeaders = new ArrayList<>();
+
+        for (HttpHeader header : headers) {
+            if (isHeaderSensitive(header.name())) {
+                maskedHeaders.add(HttpHeader.httpHeader(header.name(), MASKED_VALUE));
+                needsModification = true;
+            } else {
+                maskedHeaders.add(header);
+            }
+        }
+
+        if (needsModification) {
+            return api.http().responseBuilder()
+                    .headers(maskedHeaders)
+                    .body(originalResponse.body())
+                    .statusCode(originalResponse.statusCode())
+                    .build();
+        }
+
+        return originalResponse;
+    }
 
     @Override
     public void initialize(MontoyaApi api) {
@@ -29,28 +69,8 @@ public class APIHeaderMasker implements BurpExtension {
 
             @Override
             public ResponseReceivedAction handleHttpResponseReceived(HttpResponseReceived responseReceived) {
-                List<HttpHeader> headers = responseReceived.headers();
-                boolean needsModification = false;
-                List<HttpHeader> maskedHeaders = new ArrayList<>();
-
-                for (HttpHeader header : headers) {
-                    if (header.name().toLowerCase().contains("api")) {
-                        maskedHeaders.add(HttpHeader.httpHeader(header.name(), MASKED_VALUE));
-                        needsModification = true;
-                    } else {
-                        maskedHeaders.add(header);
-                    }
-                }
-
-                if (needsModification) {
-                    return ResponseReceivedAction.continueWith(
-                        responseReceived.withBody(responseReceived.body())
-                                      .withStatusCode(responseReceived.statusCode())
-                                      .withHeaders(maskedHeaders)
-                    );
-                }
-
-                return ResponseReceivedAction.continueWith(responseReceived);
+                HttpResponse maskedResponse = maskSensitiveHeaders(responseReceived.getResponse());
+                return ResponseReceivedAction.continueWith(maskedResponse);
             }
         });
 
@@ -58,28 +78,8 @@ public class APIHeaderMasker implements BurpExtension {
         api.proxy().registerResponseHandler(new ProxyResponseHandler() {
             @Override
             public ProxyResponseReceivedAction handleResponseReceived(InterceptedResponse interceptedResponse) {
-                List<HttpHeader> headers = interceptedResponse.headers();
-                boolean needsModification = false;
-                List<HttpHeader> maskedHeaders = new ArrayList<>();
-
-                for (HttpHeader header : headers) {
-                    if (header.name().toLowerCase().contains("api")) {
-                        maskedHeaders.add(HttpHeader.httpHeader(header.name(), MASKED_VALUE));
-                        needsModification = true;
-                    } else {
-                        maskedHeaders.add(header);
-                    }
-                }
-
-                if (needsModification) {
-                    return ProxyResponseReceivedAction.continueWith(
-                        interceptedResponse.withBody(interceptedResponse.body())
-                                         .withStatusCode(interceptedResponse.statusCode())
-                                         .withHeaders(maskedHeaders)
-                    );
-                }
-
-                return ProxyResponseReceivedAction.continueWith(interceptedResponse);
+                HttpResponse maskedResponse = maskSensitiveHeaders(interceptedResponse.getResponse());
+                return ProxyResponseReceivedAction.continueWith(maskedResponse);
             }
 
             @Override
