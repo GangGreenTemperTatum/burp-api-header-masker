@@ -44,7 +44,9 @@ public class APIHeaderMasker implements BurpExtension {
 
                 if (needsModification) {
                     return ResponseReceivedAction.continueWith(
-                        HttpResponse.httpResponse().withHeaders(maskedHeaders).build()
+                        responseReceived.withBody(responseReceived.body())
+                                      .withStatusCode(responseReceived.statusCode())
+                                      .withHeaders(maskedHeaders)
                     );
                 }
 
@@ -71,11 +73,9 @@ public class APIHeaderMasker implements BurpExtension {
 
                 if (needsModification) {
                     return ProxyResponseReceivedAction.continueWith(
-                        HttpResponse.httpResponse()
-                            .withBody(interceptedResponse.body())
-                            .withHeaders(maskedHeaders)
-                            .withStatusCode(interceptedResponse.statusCode())
-                            .build()
+                        interceptedResponse.withBody(interceptedResponse.body())
+                                         .withStatusCode(interceptedResponse.statusCode())
+                                         .withHeaders(maskedHeaders)
                     );
                 }
 
