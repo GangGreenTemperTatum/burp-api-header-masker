@@ -1,8 +1,11 @@
-from burp import IBurpExtender, IHttpListener, IMessageEditorTabFactory, IMessageEditorTab, IProxyListener, ITab
+from burp import IBurpExtender, IHttpListener, IMessageEditorTabFactory, IMessageEditorTab, IProxyListener, ITab, IMessageEditorController
 from java.io import PrintWriter
 from java.awt import Component
+from javax.swing import JTable
+from javax.swing.table import TableColumn
+from java.util import ArrayList
 
-class BurpExtender(IBurpExtender, IHttpListener, IMessageEditorTabFactory, IProxyListener):
+class BurpExtender(IBurpExtender, IHttpListener, IMessageEditorTabFactory, IProxyListener, IMessageEditorController):
     def registerExtenderCallbacks(self, callbacks):
         # Initialize extension
         self._callbacks = callbacks
@@ -11,13 +14,23 @@ class BurpExtender(IBurpExtender, IHttpListener, IMessageEditorTabFactory, IProx
         # Set extension name
         callbacks.setExtensionName("API Header Masker")
 
-        # Store original responses
+        # Store original responses and log
         self._originalResponses = {}
+        self._log = ArrayList()
+        self._currentlyDisplayedItem = None
 
-        # Register ourselves as an HTTP listener and tab factory
+        # Register ourselves as various listeners
         callbacks.registerHttpListener(self)
         callbacks.registerMessageEditorTabFactory(self)
         callbacks.registerProxyListener(self)
+
+        # Customize Proxy History Table
+        proxyHistory = callbacks.getProxyHistory()
+        if isinstance(proxyHistory, JTable):
+            tableModel = proxyHistory.getModel()
+            column = TableColumn(tableModel.getColumnCount())
+            column.setHeaderValue("Original Values")
+            proxyHistory.addColumn(column)
 
         # Get stdout for debugging
         self._stdout = PrintWriter(callbacks.getStdout(), True)
@@ -28,6 +41,7 @@ class BurpExtender(IBurpExtender, IHttpListener, IMessageEditorTabFactory, IProx
             response = message.getMessageInfo().getResponse()
             if response:
                 self._originalResponses[message.getMessageInfo()] = response
+                self._log.add(LogEntry(message.getMessageInfo(), self._helpers.analyzeResponse(response)))
 
     def processHttpMessage(self, toolFlag, messageIsRequest, messageInfo):
         if not messageIsRequest and toolFlag == self._callbacks.TOOL_PROXY:
@@ -76,6 +90,16 @@ class BurpExtender(IBurpExtender, IHttpListener, IMessageEditorTabFactory, IProx
     def createNewInstance(self, controller, editable):
         return OriginalResponseTab(self, controller, editable)
 
+    # IMessageEditorController methods
+    def getHttpService(self):
+        return self._currentlyDisplayedItem.getHttpService() if self._currentlyDisplayedItem else None
+
+    def getRequest(self):
+        return self._currentlyDisplayedItem.getRequest() if self._currentlyDisplayedItem else None
+
+    def getResponse(self):
+        return self._currentlyDisplayedItem.getResponse() if self._currentlyDisplayedItem else None
+
 class OriginalResponseTab(IMessageEditorTab):
     def __init__(self, extender, controller, editable):
         self._extender = extender
@@ -114,3 +138,15 @@ class OriginalResponseTab(IMessageEditorTab):
 
     def getSelectedData(self):
         return self._txtInput.getSelectedText()
+
+class LogEntry:
+    def __init__(self, messageInfo, requestResponse):
+        self._messageInfo = messageInfo
+        self._requestResponse = requestResponse
+        self._originalValue = None
+
+    def getOriginalValue(self):
+        return self._originalValue
+
+    def setOriginalValue(self, value):
+        self._originalValue = value
